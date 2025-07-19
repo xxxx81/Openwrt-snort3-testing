@@ -1,0 +1,42 @@
+#!/bin/sh
+if [[ ! -e /tmp/snort-log.find ]]; then
+find / -name *_alert_*.txt > /tmp/snort-log.find
+fi
+if [ ! $(wc -c < /tmp/snort-log.find) -ge 5 ]; then
+echo "*Error Snort Log files not found*"
+rm /tmp/snort-log.find
+exit
+fi
+if [[ ! -e /tmp/snort-log-app.find ]]; then
+find / -name *_appid_stats.log > /tmp/snort-log-app.find
+fi
+if [ ! $(wc -c < /tmp/snort-log-app.find) -ge 5 ]; then
+echo "*Warning Snort AppId Log files not found*"
+rm /tmp/snort-log-app.find
+fi
+if ! [ "$1" = "-a" -o "$1" = "-app" -o "$1" = "-s" -o "$1" = "-sum" ]; then
+echo "-a = Show Snort alert logs"
+echo "-s = Search logs for events"
+echo "-app = Show AppID Logs"
+echo "-sum = Show sum of events"
+exit
+fi
+if [[ $1 = "-a" ]]; then
+cat $(cat /tmp/snort-log.find) | cut -b1-14,22- | sort -n | sed -e "s/$/\n/g"
+exit
+fi
+if [[ $1 = "-sum" ]]; then
+cat $(cat /tmp/snort-log.find) | sed -e s'/^.*] "//' | awk -F '"' '{print $1}' | sed 's/ /_/g' | \
+		awk '{for (i=1;i<=NF;i++)print $1}' | sort | uniq -c | sort -n | sed 's/_/ /g'
+exit
+fi
+if [[ $1 = "-s" && -n "$2" ]]; then
+cat $(cat /tmp/snort-log.find) | egrep -i "$2" | egrep -i "$3" | cut -b1-14,22- | sort -n | sed -e "s/$/\n/g"
+exit
+fi
+if [[ $1 = "-app" && -e /tmp/snort-log-app.find ]]; then
+cat $(cat /tmp/snort-log-app.find) | sed 's/[^a-z]*//gi' | awk '{for (i=1;i<=NF;i++)print $1}' | sort | uniq -c | sort -n | sed 's/_/ /g'
+exit
+else
+exit
+fi

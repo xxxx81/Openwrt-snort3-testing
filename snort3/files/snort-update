@@ -1,0 +1,51 @@
+#!/bin/sh
+source /etc/config/snort-config.conf
+cd /tmp
+mkdir snortupdate
+cd /tmp/snortupdate/
+if [[ $feodotracker_list -ge 1 ]]; then
+echo o************************o
+echo ***Updating Ipblocklist***
+echo o************************o
+sed -i "s/--blocklist =/blocklist =/" /etc/snort/snort.lua
+wget https://feodotracker.abuse.ch/downloads/ipblocklist.txt
+cp ipblocklist.txt $snort_rules_directory/ipblocklist.txt
+else
+sed -i "s/ blocklist =/--blocklist =/" /etc/snort/snort.lua
+fi
+reset
+echo o**************************o
+echo ***Updating Snort 3 Rules***
+echo o**************************o
+wget $snort3_communtity_rules_url
+if [ -n "$oinkcode" ]; then
+wget $snort3_rules?oinkcode=$oinkcode
+cp *$oinkcode snortrules.tar.gz
+if [ -s "snortrules.tar.gz" ]; then
+tar -xzf snortrules.tar.gz
+cp -r so_rules /etc/snort/
+rm -r so_rules
+find -name *.states > states
+cp -r $(cat states) $snort_rules_directory/
+date -r $(find -name snort3-malware-cnc.rules) > $snort_rules_directory/version.txt
+fi
+fi
+if [ -s "snort3-community-rules.tar.gz" ]; then
+tar -xzf snort3*.tar.gz
+date -r $(find -name snort3-community.rules) > $snort_rules_directory/version-community.txt
+fi
+find -name *.rules > frules
+cp $(cat frules) $snort_rules_directory/
+if [[ $pcre2_patch -ge 1 ]]; then
+sed -i 's/pcre/pcre2/g' $snort_rules_directory/*
+fi
+reset
+echo o*********************o
+echo ***Start service new***
+echo o*********************o
+/etc/init.d/snort restart
+rm -r /tmp/snortupdate
+echo ********Snort rules date********
+cat $snort_rules_directory/version.txt
+echo ***Snort community rules date***
+cat $snort_rules_directory/version-community.txt

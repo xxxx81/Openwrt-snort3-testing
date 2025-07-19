@@ -1,0 +1,18 @@
+#!/bin/sh
+
+uci -q batch <<-EOT
+	delete firewall.snort
+    set firewall.snort=include
+    set firewall.snort.enabled=1
+	set firewall.snort.type=script
+	set firewall.snort.path=/usr/bin/snort-table
+    set firewall.snort.fw4_compatible=1	
+    commit firewall
+EOT
+
+fw4 restart
+cd /etc/snort
+mkdir log
+/usr/bin/snort-update
+exit 0
+

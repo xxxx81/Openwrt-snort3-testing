@@ -1,0 +1,16 @@
+#!/bin/sh
+source /etc/config/snort-config.conf
+if [ ! -d "/tmp//rules" ]; then
+sleep $boot_timeout
+fi
+cp -r -f $snort_rules_directory /tmp/
+if [ -n "$oinkcode" ]; then
+rulesfile="/etc/snort/ips.include"
+else
+rulesfile="com.include"
+fi
+logger -p daemon.info Running Snort 
+logger -p daemon.info Snort rules date: $(cat /tmp/rules/version.txt)
+logger -p daemon.info Snort Community rules date: $(cat /tmp/rules/version-community.txt)
+exec nice -n -20 taskset -a -c 1,2,3 snort -c "/etc/snort/snort.lua" --tweaks security -i "5" -i "6" -i "7" --daq-dir /usr/lib/daq --daq nfq -Q -z 3 -s 65531 --daq-var queue_maxlen=8192 --daq-var fanout_type=LB -k none -R $rulesfile
+exit

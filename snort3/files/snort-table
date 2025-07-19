@@ -1,0 +1,53 @@
+#!/bin/sh
+source /etc/config/snort-config.conf
+
+verbose=false
+
+if [ -z "$wan_device" ]; then
+
+wan_device=$(uci get network.wan.device)
+
+fi
+
+nft list ruleset | grep -q 'IPS' && nft delete chain inet fw4 IPS_output && nft delete chain inet fw4 IPS_input
+
+nft -f - <<TABLE
+
+table inet fw4 {
+
+          chain IPS_output {
+
+             type filter hook postrouting priority 95; policy accept;
+
+#oifname { $wan_device,Wg0 } tcp flags ack ct state established counter accept
+
+oifname { $wan_device,Wg0 } ip protocol icmp counter accept
+
+oifname { $wan_device } udp dport 51820 ct state established counter accept
+
+oifname { $wan_device,Wg0 } tcp dport 465 counter accept
+
+oifname { $wan_device,Wg0 } counter queue flags bypass to 5-7
+
+}
+
+chain IPS_input {
+
+              type filter hook prerouting priority 300; policy accept;
+
+iifname { $wan_device,Wg0 } ip protocol icmp ct state established counter accept
+
+iifname { $wan_device } udp sport 51820 ct state established counter accept
+
+iifname { $wan_device,Wg0 } tcp sport 465 counter accept
+
+iifname { $wan_device,Wg0 } counter queue flags bypass to 5-7
+
+	}
+}
+
+TABLE
+
+$verbose
+
+exit 0
